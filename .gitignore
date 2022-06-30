@@ -24,3 +24,7 @@ docs/site/
 Manifest.toml
 shadow/Project.toml
 shadow/src/shadow.jl
+.ipynb_checkpoints/random_Clifford_examples-checkpoint.ipynb
+.ipynb_checkpoints/Untitled-checkpoint.ipynb
+token.txt
+.vscode/settings.json
