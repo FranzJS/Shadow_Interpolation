@@ -4,6 +4,7 @@ using BitBasis
 using ProgressBars
 using Statistics
 include("random_clifford.jl")
+include("utils.jl")
 
 
 function rowsum(h,i, tableau)
@@ -67,6 +68,7 @@ function measure_computational_basis(diag_rho)
     return string(measurement_outcome, base=2, pad=n)
 end
 
+
 """ Computational basis measurement for a stabilizer state in tableau formalism. See https://arxiv.org/abs/quant-ph/0406196. """
 function measure_computational_basis_(tableau)
     n = Int((size(tableau)[1]-1)/2)
@@ -116,6 +118,27 @@ function measure_computational_basis_(tableau)
     return measurement_outcome
 end
 
+
+function H(a_qubit, tableau)
+    n = Int((size(tableau)[1]-1)/2)
+    tableau[1:end-1, 2*n+1] = vec_mod(tableau[1:end-1, 2*n+1] .+ tableau[1:end-1, a_qubit] .* tableau[1:end-1, a_qubit+n])
+    h = copy(tableau[1:end-1, a_qubit])
+    tableau[1:end-1, a_qubit] = tableau[1:end-1, a_qubit+n]
+    tableau[1:end-1, a_qubit+n] = h
+end
+
+function S(a_qubit, tableau)
+    n = Int((size(tableau)[1]-1)/2)
+    tableau[1:end-1, 2*n+1] = vec_mod(tableau[1:end-1, 2*n+1] .+ tableau[1:end-1, a_qubit] .* tableau[1:end-1, a_qubit+n])
+    tableau[1:end-1, a_qubit+n] = vec_mod(tableau[1:end-1, a_qubit+n] .+ tableau[1:end-1, a_qubit])
+end
+
+function CNOT(a_qubit, b_qubit, tableau)
+    n = Int((size(tableau)[1]-1)/2)
+    tableau[1:end-1, 2*n+1] = vec_mod(tableau[1:end-1, 2*n+1] .+ tableau[1:end-1, a_qubit] .* tableau[1:end-1, b_qubit+n] .* (tableau[1:end-1,b_qubit] .+ tableau[1:end-1, a_qubit+n] .+ 1))
+    tableau[1:end-1, b_qubit] = vec_mod(tableau[1:end-1, b_qubit] .+ tableau[1:end-1, a_qubit])
+    tableau[1:end-1, a_qubit+n] = vec_mod(tableau[1:end-1, b_qubit+n] .+ tableau[1:end-1, a_qubit+n])
+end
 
 
 
