@@ -6,6 +6,129 @@ using Statistics
 include("random_clifford.jl")
 
 
+function rowsum(h,i, tableau)
+    T = tableau
+    n = Int((size(tableau)[1]-1)/2) # tableau has (2n+1) \times (2n+1)
+    function g(x_1, z_1, x_2, z_2)
+        if x_1 == z_1 == 0
+            return 0 
+        elseif x_1 == z_1 == 1
+            return z_2 - x_2 
+        elseif (x_1 == 1) && (z_1 == 0)
+            return z_2*(2*x_2 - 1)
+        else
+            return x_2*(1-2*z_2)
+        end
+    end
+
+    rowsum = 2*tableau[h, 2*n+1] + 2*tableau[i, 2*n+1]
+    for j in 1:n
+        rowsum += g(T[i,j], T[i,j+n], T[h,j], T[h,j+n])
+    end
+
+    if mod(rowsum, 0:3) == 0
+        T[h, 2*n+1] = 0
+    else
+        T[h, 2*n+1] = 1
+    end
+
+    for j in 1:n
+        T[h,j] = mod(T[h,j]+T[i,j], 0:1)
+        T[h, j+n] = mod(T[h, j+n]+T[i,j+n], 0:1)
+    end
+end
+
+
+""" state is given as a string resulting from the conversion of the decimal state number
+to base=2, as in e.g. string(6, base=2, pad=4) where pad is equal to the number of qubits
+in the system."""
+function computational_basis_state_to_tableau(state)
+    n = length(state)
+    T = falses((2*n+1, 2*n+1)) # initialize tableau
+    for i in 1:2*n
+        T[i,i] = 1
+    end
+
+    for i in 1:n
+        if string(x[i]) == "1"
+            T[i+n, 2*n+1] = 1
+        end
+    end 
+
+    return T 
+end 
+
+
+""" For computational basis measurements, only the diagonal elements are required, i.e. saving only 
+the diagonal suffices. """
+function measure_computational_basis(diag_rho)
+    n = Int(log2(length(diag_rho)))
+    measurement_outcome = sample(pweights(real(diag_rho))) - 1 # comp. basis states start with 0
+    return string(measurement_outcome, base=2, pad=n)
+end
+
+""" Computational basis measurement for a stabilizprintln("00 count:", cnt_00)
+println("11 count:", cnt_11)er state in tableau formalism. See https://arxiv.org/abs/quant-ph/0406196. """
+function measure_computational_basis_(tableau)
+    n = Int((size(tableau)[1]-1)/2)
+    function measure_qubit(a, tableau)
+        T = tableau
+        p_exists = false
+        p_idx = 0
+        for i in 1:n
+            if T[i+n, a] == 1
+                p_exists = true
+                p_idx = i+n
+                break 
+            end
+        end
+
+        if p_exists == true
+            for i in 1:2*n
+                if i == p_idx
+                    continue 
+                end
+                if T[i,a] == 1
+                    rowsum(i,p_idx,T)
+                end
+            end
+            T[p_idx-n, 1:end] = T[p_idx, 1:end]
+            T[p_idx, 1:end] = falses(2*n+1)
+            T[p_idx, 2*n+1] = rand([0,1])
+            T[p_idx, a+n] = 1
+            return T[p_idx, 2*n+1]
+
+        else
+            T[2*n+1, 1:end] *= 0
+            for i in 1:n
+                if T[i,a] == 1
+                    rowsum(2*n+1, i+n, T)
+                end
+            end
+            return T[2*n+1, 2*n+1]
+        end
+    end
+
+    measurement_outcome = ""
+    for i_qubit in 1:n 
+        i_measurement_outcome = measure_qubit(i_qubit, tableau)
+        measurement_outcome *= string(Int(i_measurement_outcome))
+    end
+    return measurement_outcome
+end
+
+
+
+
+#########################################
+######## Outdated Implementation ########
+#########################################
+""" The following function are designed to operate on *explicitly written* density 
+matrices and are thus terribly slow. We still keep this code as it provides a means
+for testing new code."""
+
+
+
 """For now, let Yao do this. Maybe later try to beat their implementation."""
 function comp_basis_measurement(rho, nshots=1; return_bitstring=false)
     measurement_outcome = measure(DensityMatrix(rho), nshots=nshots)
