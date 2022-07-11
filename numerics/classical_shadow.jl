@@ -67,8 +67,7 @@ function measure_computational_basis(diag_rho)
     return string(measurement_outcome, base=2, pad=n)
 end
 
-""" Computational basis measurement for a stabilizprintln("00 count:", cnt_00)
-println("11 count:", cnt_11)er state in tableau formalism. See https://arxiv.org/abs/quant-ph/0406196. """
+""" Computational basis measurement for a stabilizer state in tableau formalism. See https://arxiv.org/abs/quant-ph/0406196. """
 function measure_computational_basis_(tableau)
     n = Int((size(tableau)[1]-1)/2)
     function measure_qubit(a, tableau)
