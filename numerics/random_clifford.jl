@@ -76,9 +76,10 @@ end
 
 """ Terribly slow! Just for prototyping. """
 function Clifford_circuit_to_matrix(Clifford_gates, n_qubits)
+    n = size(Clifford_gates)[1]
     circuit = 1
-    for i in 1:size(Clifford_gates)[1]
-        circuit = circuit * Clifford_gate_to_matrix(Clifford_gates[i], n_qubits)
+    for i in 1:n
+        circuit = circuit * Clifford_gate_to_matrix(Clifford_gates[n+1-i], n_qubits)
     end
     return circuit
 end
