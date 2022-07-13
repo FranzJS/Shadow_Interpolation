@@ -51,7 +51,7 @@ function computational_basis_state_to_tableau(state)
     end
 
     for i in 1:n
-        if string(x[i]) == "1"
+        if string(state[i]) == "1"
             T[i+n, 2*n+1] = 1
         end
     end 
@@ -127,11 +127,13 @@ function H(a_qubit, tableau)
     tableau[1:end-1, a_qubit+n] = h
 end
 
+
 function S(a_qubit, tableau)
     n = Int((size(tableau)[1]-1)/2)
     tableau[1:end-1, 2*n+1] = vec_mod(tableau[1:end-1, 2*n+1] .+ tableau[1:end-1, a_qubit] .* tableau[1:end-1, a_qubit+n])
     tableau[1:end-1, a_qubit+n] = vec_mod(tableau[1:end-1, a_qubit+n] .+ tableau[1:end-1, a_qubit])
 end
+
 
 function CNOT(a_qubit, b_qubit, tableau)
     n = Int((size(tableau)[1]-1)/2)
@@ -140,6 +142,79 @@ function CNOT(a_qubit, b_qubit, tableau)
     tableau[1:end-1, a_qubit+n] = vec_mod(tableau[1:end-1, b_qubit+n] .+ tableau[1:end-1, a_qubit+n])
 end
 
+
+""" Apply a unitary given as a quantum circuit (as the output of sample_random_Clifford()) to tableau. """
+function apply_unitary(U, tableau)
+    n = length(U)
+    for i in 1:n
+        unitary = U[i]
+        if unitary[1] == "CX"
+            CNOT(unitary[2], unitary[3], tableau)
+        elseif unitary[1] == "H"
+            H(unitary[2], tableau)
+        elseif unitary[1] == "S"
+            S(unitary[2], tableau)
+        elseif unitary[1] == "X"
+            H(unitary[2], tableau)
+            S(unitary[2], tableau)
+            S(unitary[2], tableau)
+            H(unitary[2], tableau)
+        elseif unitary[1] == "Y"
+            S(unitary[2], tableau)
+            H(unitary[2], tableau)
+            S(unitary[2], tableau)
+            S(unitary[2], tableau)
+            H(unitary[2], tableau)
+            S(unitary[2], tableau)
+            S(unitary[2], tableau)
+            S(unitary[2], tableau)
+        elseif unitary[1] == "Z"
+            S(unitary[2], tableau)
+            S(unitary[2], tableau)
+        end
+    end
+end
+
+""" state is given as an explicit density matrix. """
+function classical_snapshot(rho, n_qubit_clifford)
+    n_qubits = Int(log2(size(rho)[1]))
+    if n_qubit_clifford == true
+        u = sample_random_Clifford(n_qubits)
+        U = Clifford_circuit_to_matrix(u, n_qubits)
+        b = measure_computational_basis(diag(U'*rho*U))
+        b = computational_basis_state_to_tableau(b)
+        apply_unitary(u, b)
+        return b
+    else
+        # 1) construct unitary for rotation
+        u = [] 
+        for i_qubit in 1:n_qubits
+            push!(u, sample_random_Clifford(1))
+        end
+        U = 1
+        for i_qubit in 1:n_qubits
+            U = LinearAlgebra.kron(U, Clifford_circuit_to_matrix(u[i_qubit], 1))
+        end
+        b = measure_computational_basis(diag(U'*rho*U))
+        b = computational_basis_state_to_tableau(b)
+        for i_qubit in 1:n_qubits
+            apply_unitary(u[i_qubit], b)
+        end
+        return b
+    end
+end
+
+
+""" Accumulate a shadow of given size (n_snapshots). Note that this is memory intensive, 
+there might be scenarios where calculating on the fly might be better."""
+function classical_shadow(rho, n_snapshots; n_qubit_clifford=false)
+    n_qubits = Int(log2(size(rho)[1]))
+    shadow = BitArray(undef, (n_snapshots, 2*n_qubits+1, 2*n_qubits+1))
+    for i in 1:n_snapshots
+        shadow[i, 1:end, 1:end] = BitArray(classical_snapshot(rho, n_qubit_clifford))
+    end
+    return shadow
+end
 
 
 #########################################
@@ -191,8 +266,9 @@ function construct_classical_snapshot(rho; measurement_primitive="single")
         return classical_snapshot
     else
         U = Clifford_circuit_to_matrix(sample_random_Clifford(n_qubits), n_qubits)
-        b = comp_basis_measurement(U*rho*U')
-        classical_snapshot = (2^n_qubits + 1)*U'*b*b'*U - I 
+        b = comp_basis_measurement(U'*rho*U)
+        #classical_snapshot = (2^n_qubits + 1)*U*b*b'*U' - I 
+        classical_snapshot = U*b*b'*U' 
         return classical_snapshot
     end
 end
