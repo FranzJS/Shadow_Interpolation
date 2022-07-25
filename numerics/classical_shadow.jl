@@ -2,9 +2,9 @@ using LinearAlgebra
 import Yao
 using BitBasis
 using ProgressBars
-using Statistics
-include("random_clifford.jl")
-include("utils.jl")
+using StatsBase
+include("../numerics/random_clifford.jl")
+include("../numerics/utils.jl")
 
 
 function rowsum(h,i, tableau)
@@ -217,12 +217,26 @@ function classical_shadow(rho, n_snapshots; n_qubit_clifford=false)
 end
 
 
+# for convenience a measurement function of the Pauli Z string 
+function measurement_Z_n(tableau)
+    b = measure_computational_basis_(tableau)
+    if isodd(count(==('1'), b))
+        return -1
+    else 
+        return 1
+    end
+end
+
 #########################################
 ######## Outdated Implementation ########
 #########################################
 """ The following function are designed to operate on *explicitly written* density 
 matrices and are thus terribly slow. We still keep this code as it provides a means
-for testing new code."""
+for testing new code.
+------------
+Actually, for small numbers of qubits this is even faster, still, the gold standard should be storing
+results in tableau formalism (small memory footprint) and predict from there.   
+"""
 
 
 
