@@ -7,7 +7,7 @@ include("../numerics/random_clifford.jl")
 include("../numerics/utils.jl")
 
 
-function rowsum(h,i, tableau)
+function rowsum!(h,i, tableau)
     T = tableau
     n = Int((size(tableau)[1]-1)/2) # tableau has (2n+1) \times (2n+1)
     function g(x_1, z_1, x_2, z_2)
@@ -22,12 +22,12 @@ function rowsum(h,i, tableau)
         end
     end
 
-    rowsum = 2*tableau[h, 2*n+1] + 2*tableau[i, 2*n+1]
+    rowsum! = 2*tableau[h, 2*n+1] + 2*tableau[i, 2*n+1]
     for j in 1:n
-        rowsum += g(T[i,j], T[i,j+n], T[h,j], T[h,j+n])
+        rowsum! += g(T[i,j], T[i,j+n], T[h,j], T[h,j+n])
     end
 
-    if mod(rowsum, 0:3) == 0
+    if mod(rowsum!, 0:3) == 0
         T[h, 2*n+1] = 0
     else
         T[h, 2*n+1] = 1
@@ -62,7 +62,7 @@ end
 
 """ For computational basis measurements, only the diagonal elements are required, i.e. saving only 
 the diagonal suffices. """
-function measure_computational_basis(diag_rho)
+function measure_computational_basis_(diag_rho)
     n = Int(log2(length(diag_rho)))
     measurement_outcome = sample(pweights(real(diag_rho))) - 1 # comp. basis states start with 0
     return string(measurement_outcome, base=2, pad=n)
@@ -70,7 +70,7 @@ end
 
 
 """ Computational basis measurement for a stabilizer state in tableau formalism. See https://arxiv.org/abs/quant-ph/0406196. """
-function measure_computational_basis_(tableau)
+function measure_computational_basis!(tableau)
     n = Int((size(tableau)[1]-1)/2)
     function measure_qubit(a, tableau)
         T = tableau
@@ -90,7 +90,7 @@ function measure_computational_basis_(tableau)
                     continue 
                 end
                 if T[i,a] == 1
-                    rowsum(i,p_idx,T)
+                    rowsum!(i,p_idx,T)
                 end
             end
             T[p_idx-n, 1:end] = T[p_idx, 1:end]
@@ -103,7 +103,7 @@ function measure_computational_basis_(tableau)
             T[2*n+1, 1:end] *= 0
             for i in 1:n
                 if T[i,a] == 1
-                    rowsum(2*n+1, i+n, T)
+                    rowsum!(2*n+1, i+n, T)
                 end
             end
             return T[2*n+1, 2*n+1]
@@ -240,7 +240,8 @@ end
 
 # for convenience a measurement function of the Pauli Z string 
 function measurement_Z_n(tableau)
-    b = measure_computational_basis_(tableau)
+    T = copy(tableau)
+    b = measure_computational_basis!(T)
     if isodd(count(==('1'), b))
         return -1
     else 
@@ -260,7 +261,7 @@ function measurement_Pauli_string(tableau, pauli_string)
             H(i,T)
         end
     end
-    b_ = measure_computational_basis_(T)
+    b_ = measure_computational_basis!(T)
     b = ""
     for (i, P) in enumerate(pauli_string)
         if P == 'I'

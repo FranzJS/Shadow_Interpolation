@@ -134,13 +134,13 @@ end
 
 
 """
-    apply_H(i_qubit, Pauli_subtableau)
+    apply_H!(i_qubit, Pauli_subtableau)
 
 Apply a H gate to a Pauli subtableau. Pauli subtableau has to be given in the notation
 [X bits Pauli 1, Z bits Pauli 1, X bits Pauli 2, Z bits Pauli 2]. No sign information is
 passed here.
 """
-function apply_H(i_qubit, Pauli_subtableau, l)
+function apply_H!(i_qubit, Pauli_subtableau, l)
     x1, x2 = Pauli_subtableau[1, i_qubit], Pauli_subtableau[3, i_qubit]
     Pauli_subtableau[1, i_qubit], Pauli_subtableau[3, i_qubit] = Pauli_subtableau[2, i_qubit], Pauli_subtableau[4, i_qubit]
     Pauli_subtableau[2, i_qubit], Pauli_subtableau[4, i_qubit] = x1, x2
@@ -149,13 +149,13 @@ end
 
 
 """
-    apply_S(i_qubit, Pauli_subtableau)
+    apply_S!(i_qubit, Pauli_subtableau)
 
 Apply a S gate to a Pauli subtableau. Pauli subtableau has to be given in the notation
 [X bits Pauli 1, Z bits Pauli 1, X bits Pauli 2, Z bits Pauli 2]. No sign information is
 passed here.
 """
-function apply_S(i_qubit, Pauli_subtableau, l)
+function apply_S!(i_qubit, Pauli_subtableau, l)
     Pauli_subtableau[2, i_qubit] = mod(Pauli_subtableau[1, i_qubit] + Pauli_subtableau[2, i_qubit], 0:1)
     Pauli_subtableau[4, i_qubit] = mod(Pauli_subtableau[3, i_qubit] + Pauli_subtableau[4, i_qubit], 0:1)
     return ("S", i_qubit+(l-1))
@@ -163,13 +163,13 @@ end
 
 
 """
-    apply_CX(i_qubit, j_qubit, Pauli_subtableau)
+    apply_CX!(i_qubit, j_qubit, Pauli_subtableau)
 
 Apply a CX (CNOT) gate to a Pauli subtableau. Pauli subtableau has to be given in the notation
 [X bits Pauli 1, Z bits Pauli 1, X bits Pauli 2, Z bits Pauli 2]. No sign information is
 passed here.
 """
-function apply_CX(i_qubit, j_qubit, Pauli_subtableau, l)
+function apply_CX!(i_qubit, j_qubit, Pauli_subtableau, l)
     Pauli_subtableau[1, j_qubit] = mod(Pauli_subtableau[1, i_qubit] + Pauli_subtableau[1, j_qubit], 0:1) 
     Pauli_subtableau[3, j_qubit] = mod(Pauli_subtableau[3, i_qubit] + Pauli_subtableau[3, j_qubit], 0:1) 
 
@@ -180,15 +180,15 @@ end
 
 
 
-function sweep_step_1(Pauli_subtableau, Clifford_gates, l, Pauli_idx_start=1)
+function sweep_step_1!(Pauli_subtableau, Clifford_gates, l, Pauli_idx_start=1)
     n_qubit = size(Pauli_subtableau)[2]
     p = Pauli_idx_start
     for i_qubit in 1:n_qubit
         if Pauli_subtableau[p+1, i_qubit] == 1
             if Pauli_subtableau[p, i_qubit] == 0
-                push!(Clifford_gates, apply_H(i_qubit, Pauli_subtableau, l))
+                push!(Clifford_gates, apply_H!(i_qubit, Pauli_subtableau, l))
             else
-                push!(Clifford_gates, apply_S(i_qubit, Pauli_subtableau, l))
+                push!(Clifford_gates, apply_S!(i_qubit, Pauli_subtableau, l))
             end
         end
     end
@@ -217,31 +217,31 @@ function update_sorted_list(sorted_list)
     return sorted_list[mask]
 end
 
-function sweep_step_23(Pauli_subtableau, Clifford_gates, l, Pauli_idx_start=1)
+function sweep_step_23!(Pauli_subtableau, Clifford_gates, l, Pauli_idx_start=1)
     sorted_list = create_sorted_list(Pauli_subtableau, Pauli_idx_start)
     while length(sorted_list) > 1
         for i in 1:(length(sorted_list)-1)
-            push!(Clifford_gates, apply_CX(sorted_list[i], sorted_list[i+1], Pauli_subtableau, l))
+            push!(Clifford_gates, apply_CX!(sorted_list[i], sorted_list[i+1], Pauli_subtableau, l))
         end
         sorted_list = update_sorted_list(sorted_list)
     end
     if sorted_list[1] != 1
-        push!(Clifford_gates, apply_CX(1, sorted_list[1], Pauli_subtableau, l))
-        push!(Clifford_gates, apply_CX(sorted_list[1], 1, Pauli_subtableau, l))
-        push!(Clifford_gates, apply_CX(1, sorted_list[1], Pauli_subtableau, l))
+        push!(Clifford_gates, apply_CX!(1, sorted_list[1], Pauli_subtableau, l))
+        push!(Clifford_gates, apply_CX!(sorted_list[1], 1, Pauli_subtableau, l))
+        push!(Clifford_gates, apply_CX!(1, sorted_list[1], Pauli_subtableau, l))
     end
 end
 
 
-function sweep_step_4(Pauli_subtableau, Clifford_gates, l)
-    push!(Clifford_gates, apply_H(1, Pauli_subtableau, l))
-    sweep_step_1(Pauli_subtableau, Clifford_gates, l, 3)
-    sweep_step_23(Pauli_subtableau, Clifford_gates, l, 3)
-    push!(Clifford_gates, apply_H(1, Pauli_subtableau, l))
+function sweep_step_4!(Pauli_subtableau, Clifford_gates, l)
+    push!(Clifford_gates, apply_H!(1, Pauli_subtableau, l))
+    sweep_step_1!(Pauli_subtableau, Clifford_gates, l, 3)
+    sweep_step_23!(Pauli_subtableau, Clifford_gates, l, 3)
+    push!(Clifford_gates, apply_H!(1, Pauli_subtableau, l))
 end
 
 
-function sweep_step_5(Clifford_gates, l)
+function sweep_step_5!(Clifford_gates, l)
     s = bitrand(2)
     if (s[1] == 0) & (s[2] == 1)
         push!(Clifford_gates, ("X", l))
@@ -271,10 +271,10 @@ function sample_random_Clifford(n_qubits)
             end
         end
         # 2) sweep rows 2i, 2i-1
-        sweep_step_1(Pauli_subtableau, Clifford_gates, l)
-        sweep_step_23(Pauli_subtableau, Clifford_gates, l)
-        sweep_step_4(Pauli_subtableau, Clifford_gates, l)
-        sweep_step_5(Clifford_gates, l)
+        sweep_step_1!(Pauli_subtableau, Clifford_gates, l)
+        sweep_step_23!(Pauli_subtableau, Clifford_gates, l)
+        sweep_step_4!(Pauli_subtableau, Clifford_gates, l)
+        sweep_step_5!(Clifford_gates, l)
     end
     return Clifford_gates
 end
