@@ -216,10 +216,59 @@ function classical_shadow(rho, n_snapshots; n_qubit_clifford=false)
     return shadow
 end
 
+""" If n_snapshots == 0, then all snapshots of the shadow are used. 
+Note: measurement_primitive == "pauli" is still untested! """
+function shadow_measurement(measurement_func, shadow; n_snapshots=0, measurement_primitive="clifford")
+    n_qubits = Int((size(shadow)[2] -1)/2)
+    if n_snapshots == 0
+        n_snapshots = size(shadow)[1]
+    else
+        n_snapshots = min(n_snapshots, size(shadow)[1]) 
+    end
+    outcome = 0
+    for i_snapshot in 1:n_snapshots
+        outcome += measurement_func(shadow[i_snapshot, 1:end, 1:end])
+    end
+    outcome /= n_snapshots
+    if measurement_primitive == "clifford"
+        outcome *= (2^n_qubits +1)
+    elseif measurement_primitive == "pauli"
+        outcome *= 3^n_qubits
+    end
+    return outcome 
+end
 
 # for convenience a measurement function of the Pauli Z string 
 function measurement_Z_n(tableau)
     b = measure_computational_basis_(tableau)
+    if isodd(count(==('1'), b))
+        return -1
+    else 
+        return 1
+    end
+end
+
+""" For pauli_string, input of the form "XYZIIZ" is required."""
+function measurement_Pauli_string(tableau, pauli_string)
+    T = copy(tableau)
+    for (i, P) in enumerate(pauli_string)
+        if P == 'X'
+            H(i, T)
+        elseif P == 'Y'
+            H(i,T)
+            S(i,T)
+            H(i,T)
+        end
+    end
+    b_ = measure_computational_basis_(T)
+    b = ""
+    for (i, P) in enumerate(pauli_string)
+        if P == 'I'
+            b *= '0'
+        else
+            b *= b_[i]
+        end
+    end
     if isodd(count(==('1'), b))
         return -1
     else 
