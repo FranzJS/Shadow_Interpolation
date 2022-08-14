@@ -26,7 +26,7 @@ end
 
 
 
-function ShadowShannonInterpolation_(measurement_func, shadows, period; n_samples=100_000, baseline_shift=true)
+function ShadowShannonInterpolation(measurement_func, shadows, period; n_samples=100_000, baseline_shift=true)
     N = Int((size(shadows)[1] - 1)/2)
     h = period/N/2
     trace_coeffs = Vector{Float64}(undef, 2*N+1)
